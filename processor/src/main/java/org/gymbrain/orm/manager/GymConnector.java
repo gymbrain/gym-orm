@@ -17,7 +17,6 @@ public class GymConnector {
         if (connection != null)
             return connection;
         try {
-
             DriverManager.registerDriver(new Driver());
             connection = DriverManager.getConnection(
                     Resource.getValue("url"),

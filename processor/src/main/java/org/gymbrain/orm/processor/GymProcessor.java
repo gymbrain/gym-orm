@@ -1,22 +1,17 @@
 package org.gymbrain.orm.processor;
 
 import com.google.auto.service.AutoService;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
 import org.gymbrain.orm.common.entity.Table;
 import org.gymbrain.orm.common.repository.DefaultMethod;
 import org.gymbrain.orm.common.repository.GymRepository;
+import org.gymbrain.orm.generator.clazz.GymClass;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,36 +22,34 @@ public class GymProcessor extends AbstractProcessor {
     private Filer filer;
     private Messager messager;
     private Elements elements;
+    private RepositoryProcessor repositoryProcessor;
+    private ProcessorContext processorContext;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         messager = processingEnv.getMessager();
         filer = processingEnv.getFiler();
         elements = processingEnv.getElementUtils();
+        repositoryProcessor = new RepositoryProcessor();
+        processorContext = new ProcessorContext();
         super.init(processingEnv);
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        Set<? extends Element> gymRepositoryElements = roundEnv.getElementsAnnotatedWith(GymRepository.class);
-        Map<String, ? extends List<? extends Element>> collect = roundEnv.getElementsAnnotatedWith(Table.class)
-                .stream().collect(Collectors.groupingBy(element -> element.asType().toString()));
-
-        for (Element gymRepositoryElement : gymRepositoryElements) {
-            List<? extends Element> defaultMethods = gymRepositoryElement.getEnclosedElements()
+        processorContext.setRepositoryElements(roundEnv.getElementsAnnotatedWith(GymRepository.class));
+        processorContext.setTableElements(roundEnv.getElementsAnnotatedWith(Table.class));
+        for (Element repositoryElement : processorContext.getRepositoryElements()) {
+            List<? extends Element> defaultMethods = repositoryElement.getEnclosedElements()
                     .stream().filter(element -> element.getAnnotation(DefaultMethod.class) != null).collect(Collectors.toList());
 
-            List<? extends Element> notDefaultMethods = gymRepositoryElement.getEnclosedElements()
+            List<? extends Element> notDefaultMethods = repositoryElement.getEnclosedElements()
                     .stream().filter(element -> element.getAnnotation(DefaultMethod.class) == null).collect(Collectors.toList());
 
-
-            for (Element methodElement : defaultMethods) {
-                String methodName = methodElement.getSimpleName().toString();
-                String parameterFullName = ((ExecutableElement) methodElement).getParameters().get(0).asType().toString();
-                collect.get(parameterFullName)
-                        .get(0).getEnclosedElements();
-            }
-            System.out.println(gymRepositoryElement);
+            GymClass aClass = new GymClass();
+            repositoryProcessor.processMethods(repositoryElement.asType().toString(), aClass, defaultMethods, processorContext, true);
+            repositoryProcessor.processMethods(repositoryElement.asType().toString(), aClass, notDefaultMethods, processorContext, false);
+            System.out.println(repositoryElement);
         }
         return true;
     }
