@@ -39,6 +39,7 @@ public class GymProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         Set<? extends Element> gymRepositoryElements = roundEnv.getElementsAnnotatedWith(GymRepository.class);
         for (Element repositoryInterfaceElement : gymRepositoryElements) {
+            extractTypeNameFromListGeneric(repositoryInterfaceElement);
             if (repositoryInterfaceElement.getKind().isInterface()) {
                 List<MethodSpec> methods;
                 methods = getMethods(repositoryInterfaceElement);
@@ -64,12 +65,18 @@ public class GymProcessor extends AbstractProcessor {
     private List<MethodSpec> getMethods(Element repositoryInterfaceElement) {
         List<MethodSpec> methodSpecs = new ArrayList<>();
 
-        MethodSpec saveMethod = MethodSpec.methodBuilder("save")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(BaseEntity.class,"entity").build())
-                .addStatement("return 0")
-                .returns(Integer.class)
-                .build();
+        MethodSpec saveMethod = null;
+        try {
+            saveMethod = MethodSpec.methodBuilder("save")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter("sad","sad")
+                    .addParameter(ParameterSpec.builder(Class.forName(extractClassName(repositoryInterfaceElement),false,new CustomClassLoader()), "entity").build())
+                    .addStatement("return 0")
+                    .returns(Integer.class)
+                    .build();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
 
         methodSpecs.add(saveMethod);
         return methodSpecs;
@@ -84,15 +91,12 @@ public class GymProcessor extends AbstractProcessor {
             return "";
     }
 
-    private Class extractTypeNameFromListGeneric(Element element) {
-        try {
-            CustomClassLoader customClassLoader = new CustomClassLoader();
-            String returnType = ((TypeElement) element).getInterfaces().toString();
-            String returnClassType = returnType.substring(returnType.indexOf("<") + 1, returnType.indexOf(">"));
-            return customClassLoader.findClass(returnClassType);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return null;
+
+    private String extractTypeNameFromListGeneric(Element element) {
+
+        String returnType = ((TypeElement) element).getInterfaces().toString();
+        String returnClassType = returnType.substring(returnType.indexOf("<") + 1, returnType.indexOf(">"));
+        return returnClassType;
+
     }
 }

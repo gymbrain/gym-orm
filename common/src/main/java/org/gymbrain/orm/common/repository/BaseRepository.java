@@ -2,6 +2,6 @@ package org.gymbrain.orm.common.repository;
 
 import org.gymbrain.orm.common.entity.BaseEntity;
 
-public interface BaseRepository {
-    Integer save(BaseEntity entity);
+public interface BaseRepository<E extends BaseEntity> {
+    Integer save(E entity);
 }
